@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown, Filter, ArrowUpDown, Edit, Trash2 } from "lucide-react";
+import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown, Filter, ArrowUpDown, Edit, Trash2, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { calculateMinInvestment, formatMinInvestment } from "@/lib/investmentUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
 
 interface LoanRequest {
   id: string;
@@ -53,6 +54,11 @@ const Dashboard = () => {
   const [selectedLoan, setSelectedLoan] = useState<LoanRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<{ avatar_url: string | null; full_name: string | null }>({ avatar_url: null, full_name: null });
+  const [userStats, setUserStats] = useState<{ totalBorrowed: number; totalInvested: number; rating: number }>({ 
+    totalBorrowed: 0, 
+    totalInvested: 0, 
+    rating: 0 
+  });
 
   // Create/Edit loan form state
   const [newLoan, setNewLoan] = useState({
@@ -87,6 +93,7 @@ const Dashboard = () => {
     }
     fetchLoanRequests();
     fetchUserProfile();
+    fetchUserStats();
   }, [user, navigate]);
 
   const fetchUserProfile = async () => {
@@ -100,6 +107,81 @@ const Dashboard = () => {
     
     if (data) {
       setUserProfile(data);
+    }
+  };
+
+  const fetchUserStats = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch total borrowed
+      const { data: loans, error: loansError } = await supabase
+        .from("loan_requests")
+        .select("amount_requested")
+        .eq("borrower_id", user.id);
+
+      if (loansError) throw loansError;
+
+      const totalBorrowed = loans?.reduce((sum, loan) => sum + Number(loan.amount_requested), 0) || 0;
+
+      // Fetch total invested
+      const { data: investments, error: investError } = await supabase
+        .from("investments")
+        .select("amount")
+        .eq("investor_id", user.id);
+
+      if (investError) throw investError;
+
+      const totalInvested = investments?.reduce((sum, inv) => sum + Number(inv.amount), 0) || 0;
+
+      // Fetch borrower profile for rating calculation
+      const { data: borrowerProfile } = await supabase
+        .from("borrower_profiles")
+        .select("credit_score, successful_loans_count, defaults_count")
+        .eq("user_id", user.id)
+        .single();
+
+      // Calculate star rating (0-5)
+      let rating = 3; // Default neutral rating
+      
+      if (borrowerProfile) {
+        const { credit_score, successful_loans_count, defaults_count } = borrowerProfile;
+        
+        // Start with credit score influence (if available)
+        if (credit_score) {
+          if (credit_score >= 750) rating = 5;
+          else if (credit_score >= 700) rating = 4.5;
+          else if (credit_score >= 650) rating = 4;
+          else if (credit_score >= 600) rating = 3.5;
+          else rating = 3;
+        }
+        
+        // Adjust based on loan history
+        if (successful_loans_count > 0 || defaults_count > 0) {
+          const successRate = successful_loans_count / (successful_loans_count + defaults_count);
+          
+          if (successRate === 1 && successful_loans_count >= 3) {
+            rating = Math.min(5, rating + 0.5); // Perfect record bonus
+          } else if (successRate >= 0.9) {
+            rating = Math.min(5, rating + 0.25);
+          } else if (successRate < 0.7) {
+            rating = Math.max(1, rating - 1);
+          }
+        }
+      }
+
+      // Investment activity bonus
+      if (totalInvested > 10000) {
+        rating = Math.min(5, rating + 0.25);
+      }
+
+      setUserStats({
+        totalBorrowed,
+        totalInvested,
+        rating: Math.round(rating * 2) / 2, // Round to nearest 0.5
+      });
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
     }
   };
 
@@ -619,7 +701,7 @@ const Dashboard = () => {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-80 bg-card border-border">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
@@ -630,6 +712,47 @@ const Dashboard = () => {
                     </p>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                {/* Profile Stats Section */}
+                <div className="px-2 py-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Profile Rating</span>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-4 w-4 ${
+                            star <= Math.floor(userStats.rating)
+                              ? "fill-primary text-primary"
+                              : star - 0.5 <= userStats.rating
+                              ? "fill-primary/50 text-primary"
+                              : "fill-muted text-muted"
+                          }`}
+                        />
+                      ))}
+                      <span className="text-sm font-semibold ml-1">{userStats.rating.toFixed(1)}</span>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Total Borrowed</span>
+                      <span className="font-semibold text-foreground">
+                        ${userStats.totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Total Invested</span>
+                      <span className="font-semibold text-primary">
+                        ${userStats.totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/settings")}>
                   <Settings className="mr-2 h-4 w-4" />
