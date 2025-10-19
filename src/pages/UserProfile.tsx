@@ -43,7 +43,7 @@ const UserProfile = () => {
         .from("profiles")
         .select("id, full_name, avatar_url")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
       setProfile(profileData);
@@ -71,7 +71,7 @@ const UserProfile = () => {
         .from("borrower_profiles")
         .select("credit_score, successful_loans_count, defaults_count")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       // Calculate star rating (0-5)
       let rating = 3; // Default neutral rating

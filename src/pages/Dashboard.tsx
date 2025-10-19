@@ -99,7 +99,7 @@ const Dashboard = () => {
       .from("profiles")
       .select("avatar_url, full_name")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
     
     if (data) {
       setUserProfile(data);
@@ -135,7 +135,7 @@ const Dashboard = () => {
         .from("borrower_profiles")
         .select("credit_score, successful_loans_count, defaults_count")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       // Calculate star rating (0-5)
       let rating = 3; // Default neutral rating
