@@ -942,9 +942,51 @@ const Dashboard = () => {
                       </div>
                       {loan.borrower_profile && (
                         <div className="space-y-1 text-xs text-muted-foreground">
-                          {loan.borrower_profile.credit_score && (
-                            <p>Credit Score: {loan.borrower_profile.credit_score}</p>
-                          )}
+                          <div className="flex items-center gap-1">
+                            <span>Rating:</span>
+                            <div className="flex">
+                              {(() => {
+                                // Calculate star rating (0-5)
+                                let rating = 3; // Default neutral rating
+                                const { credit_score, successful_loans_count, defaults_count } = loan.borrower_profile;
+                                
+                                // Start with credit score influence (if available)
+                                if (credit_score) {
+                                  if (credit_score >= 750) rating = 5;
+                                  else if (credit_score >= 700) rating = 4.5;
+                                  else if (credit_score >= 650) rating = 4;
+                                  else if (credit_score >= 600) rating = 3.5;
+                                  else rating = 3;
+                                }
+                                
+                                // Adjust based on loan history
+                                if (successful_loans_count > 0 || defaults_count > 0) {
+                                  const successRate = successful_loans_count / (successful_loans_count + defaults_count);
+                                  
+                                  if (successRate === 1 && successful_loans_count >= 3) {
+                                    rating = Math.min(5, rating + 0.5); // Perfect record bonus
+                                  } else if (successRate >= 0.9) {
+                                    rating = Math.min(5, rating + 0.25);
+                                  } else if (successRate < 0.7) {
+                                    rating = Math.max(1, rating - 0.5);
+                                  }
+                                }
+                                
+                                return Array.from({ length: 5 }).map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${
+                                      i < Math.floor(rating)
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : i < rating
+                                        ? "fill-yellow-200 text-yellow-400"
+                                        : "fill-none text-gray-300"
+                                    }`}
+                                  />
+                                ));
+                              })()}
+                            </div>
+                          </div>
                           <p>
                             Track Record: {loan.borrower_profile.successful_loans_count} successful,{" "}
                             {loan.borrower_profile.defaults_count} defaults
