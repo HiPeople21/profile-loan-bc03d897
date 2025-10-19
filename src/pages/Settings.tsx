@@ -109,8 +109,7 @@ const Settings = () => {
       // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: avatarUrlWithTimestamp })
-        .eq("id", user.id);
+        .upsert({ id: user.id, avatar_url: avatarUrlWithTimestamp }, { onConflict: 'id' });
 
       if (updateError) throw updateError;
 
@@ -135,10 +134,11 @@ const Settings = () => {
       // Update main profile
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
           full_name: profile.full_name,
-        })
-        .eq("id", user.id);
+          avatar_url: profile.avatar_url || null,
+        }, { onConflict: 'id' });
 
       if (profileError) throw profileError;
 
