@@ -8,26 +8,26 @@ import heroBg from "@/assets/hero-bg.jpg";
 const Index = () => {
   const navigate = useNavigate();
 
-  // Clear any stale sessions on mount
+  // Redirect authenticated users without a role to select-role
   useEffect(() => {
-    const clearSession = async () => {
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if user still exists in database
+        // Check if user has a role
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id)
           .maybeSingle();
         
-        // If session exists but no role data, likely stale session - clear it
+        // If session exists but no role data, redirect to select-role
         if (!roleData) {
-          await supabase.auth.signOut();
+          navigate("/select-role");
         }
       }
     };
-    clearSession();
-  }, []);
+    checkSession();
+  }, [navigate]);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
