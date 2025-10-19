@@ -489,6 +489,9 @@ const Dashboard = () => {
   const getFilteredAndSortedLoans = () => {
     let filtered = [...loanRequests];
 
+    // Hide fully funded loans
+    filtered = filtered.filter((loan) => loan.amount_funded < loan.amount_requested);
+
     // Apply amount filter
     if (filterAmount !== "all") {
       filtered = filtered.filter((loan) => {
