@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown } from "lucide-react";
+import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown, Filter, ArrowUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { calculateMinInvestment, formatMinInvestment } from "@/lib/investmentUtils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LoanRequest {
   id: string;
@@ -61,6 +62,12 @@ const Dashboard = () => {
 
   // Investment form state
   const [investmentAmount, setInvestmentAmount] = useState("");
+
+  // Filter and sort state
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low" | "rate_high" | "rate_low" | "funded_high" | "funded_low">("newest");
+  const [filterAmount, setFilterAmount] = useState<"all" | "0-1000" | "1000-10000" | "10000-100000" | "100000+">("all");
+  const [filterRate, setFilterRate] = useState<"all" | "4-6" | "6-10" | "10+">("all");
+  const [filterTerm, setFilterTerm] = useState<"all" | "0-12" | "12-24" | "24+">("all");
 
   useEffect(() => {
     if (!user) {
@@ -260,6 +267,92 @@ const Dashboard = () => {
     setIsInvestDialogOpen(true);
   };
 
+  // Filter and sort logic
+  const getFilteredAndSortedLoans = () => {
+    let filtered = [...loanRequests];
+
+    // Apply amount filter
+    if (filterAmount !== "all") {
+      filtered = filtered.filter((loan) => {
+        const amount = loan.amount_requested;
+        switch (filterAmount) {
+          case "0-1000":
+            return amount <= 1000;
+          case "1000-10000":
+            return amount > 1000 && amount <= 10000;
+          case "10000-100000":
+            return amount > 10000 && amount <= 100000;
+          case "100000+":
+            return amount > 100000;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply rate filter
+    if (filterRate !== "all") {
+      filtered = filtered.filter((loan) => {
+        const rate = loan.interest_rate;
+        switch (filterRate) {
+          case "4-6":
+            return rate >= 4 && rate < 6;
+          case "6-10":
+            return rate >= 6 && rate < 10;
+          case "10+":
+            return rate >= 10;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply term filter
+    if (filterTerm !== "all") {
+      filtered = filtered.filter((loan) => {
+        const months = loan.repayment_months;
+        switch (filterTerm) {
+          case "0-12":
+            return months <= 12;
+          case "12-24":
+            return months > 12 && months <= 24;
+          case "24+":
+            return months > 24;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "oldest":
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "amount_high":
+          return b.amount_requested - a.amount_requested;
+        case "amount_low":
+          return a.amount_requested - b.amount_requested;
+        case "rate_high":
+          return b.interest_rate - a.interest_rate;
+        case "rate_low":
+          return a.interest_rate - b.interest_rate;
+        case "funded_high":
+          return (b.amount_funded / b.amount_requested) - (a.amount_funded / a.amount_requested);
+        case "funded_low":
+          return (a.amount_funded / a.amount_requested) - (b.amount_funded / b.amount_requested);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  };
+
+  const filteredLoans = getFilteredAndSortedLoans();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -438,23 +531,145 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {loanRequests.length === 0 ? (
+        {/* Filter and Sort Controls */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Filter by:</span>
+              </div>
+              
+              <Select value={filterAmount} onValueChange={(value: any) => setFilterAmount(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Amount" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Amounts</SelectItem>
+                  <SelectItem value="0-1000">Up to $1K</SelectItem>
+                  <SelectItem value="1000-10000">$1K - $10K</SelectItem>
+                  <SelectItem value="10000-100000">$10K - $100K</SelectItem>
+                  <SelectItem value="100000+">$100K+</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterRate} onValueChange={(value: any) => setFilterRate(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Interest Rate" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Rates</SelectItem>
+                  <SelectItem value="4-6">4% - 6%</SelectItem>
+                  <SelectItem value="6-10">6% - 10%</SelectItem>
+                  <SelectItem value="10+">10%+</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterTerm} onValueChange={(value: any) => setFilterTerm(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Term Length" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Terms</SelectItem>
+                  <SelectItem value="0-12">Up to 12 months</SelectItem>
+                  <SelectItem value="12-24">12 - 24 months</SelectItem>
+                  <SelectItem value="24+">24+ months</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="flex-1" />
+
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Sort by:</span>
+              </div>
+
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="amount_high">Highest Amount</SelectItem>
+                  <SelectItem value="amount_low">Lowest Amount</SelectItem>
+                  <SelectItem value="rate_high">Highest Rate</SelectItem>
+                  <SelectItem value="rate_low">Lowest Rate</SelectItem>
+                  <SelectItem value="funded_high">Most Funded</SelectItem>
+                  <SelectItem value="funded_low">Least Funded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(filterAmount !== "all" || filterRate !== "all" || filterTerm !== "all") && (
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Active filters:</span>
+                {filterAmount !== "all" && (
+                  <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterAmount("all")}>
+                    Amount: {filterAmount} ×
+                  </Badge>
+                )}
+                {filterRate !== "all" && (
+                  <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterRate("all")}>
+                    Rate: {filterRate}% ×
+                  </Badge>
+                )}
+                {filterTerm !== "all" && (
+                  <Badge variant="secondary" className="cursor-pointer" onClick={() => setFilterTerm("all")}>
+                    Term: {filterTerm} mo ×
+                  </Badge>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterAmount("all");
+                    setFilterRate("all");
+                    setFilterTerm("all");
+                  }}
+                  className="h-7 text-xs"
+                >
+                  Clear all
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {filteredLoans.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">No loan requests yet</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                {loanRequests.length === 0 ? "No loan requests yet" : "No loans match your filters"}
+              </h3>
               <p className="text-muted-foreground mb-4">
-                Be the first to create a loan request
+                {loanRequests.length === 0
+                  ? "Be the first to create a loan request"
+                  : "Try adjusting your filters to see more results"}
               </p>
-              <Button onClick={() => setIsCreateDialogOpen(true)} variant="hero">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Request
-              </Button>
+              {loanRequests.length === 0 ? (
+                <Button onClick={() => setIsCreateDialogOpen(true)} variant="hero">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Request
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setFilterAmount("all");
+                    setFilterRate("all");
+                    setFilterTerm("all");
+                  }}
+                  variant="outline"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {loanRequests.map((loan) => {
+            {filteredLoans.map((loan) => {
               const fundingPercentage = (loan.amount_funded / loan.amount_requested) * 100;
               const remainingAmount = loan.amount_requested - loan.amount_funded;
               const isOwnLoan = loan.borrower_id === user?.id;
