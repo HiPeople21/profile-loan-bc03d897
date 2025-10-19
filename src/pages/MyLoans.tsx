@@ -5,8 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, DollarSign, Percent, Clock, TrendingUp, Users } from "lucide-react";
+import { ArrowLeft, Loader2, DollarSign, Percent, Clock, TrendingUp, Users, CheckCircle2 } from "lucide-react";
 
 interface LoanWithInvestments {
   id: string;
@@ -19,6 +20,7 @@ interface LoanWithInvestments {
   status: string;
   currency: string;
   created_at: string;
+  has_repayment: boolean;
   investments: Array<{
     id: string;
     amount: number;
@@ -35,6 +37,9 @@ const MyLoans = () => {
   const { user } = useAuth();
   const [loans, setLoans] = useState<LoanWithInvestments[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRepayDialogOpen, setIsRepayDialogOpen] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState<LoanWithInvestments | null>(null);
+  const [isProcessingRepayment, setIsProcessingRepayment] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -53,7 +58,7 @@ const MyLoans = () => {
 
       if (loansError) throw loansError;
 
-      // For each loan, fetch investments
+      // For each loan, fetch investments and check for repayments
       const loansWithInvestments = await Promise.all(
         (loansData || []).map(async (loan) => {
           const { data: investmentsData } = await supabase
@@ -61,6 +66,13 @@ const MyLoans = () => {
             .select("id, amount, created_at, investor_id, is_anonymous")
             .eq("loan_id", loan.id)
             .order("created_at", { ascending: false });
+
+          // Check if repayment exists
+          const { data: repaymentData } = await supabase
+            .from("repayments")
+            .select("id")
+            .eq("loan_id", loan.id)
+            .maybeSingle();
 
           // Fetch investor profiles
           const investorIds = investmentsData?.map(inv => inv.investor_id) || [];
@@ -78,6 +90,7 @@ const MyLoans = () => {
           return {
             ...loan,
             investments: enrichedInvestments,
+            has_repayment: !!repaymentData,
           };
         })
       );
@@ -88,6 +101,69 @@ const MyLoans = () => {
       console.error(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const calculateRepaymentAmount = (loan: LoanWithInvestments) => {
+    const principal = loan.amount_funded;
+    const monthlyRate = loan.interest_rate / 100 / 12;
+    const interest = principal * monthlyRate * loan.repayment_months;
+    return principal + interest;
+  };
+
+  const handleRepayment = async () => {
+    if (!selectedLoan || !user) return;
+
+    setIsProcessingRepayment(true);
+    try {
+      const repaymentAmount = calculateRepaymentAmount(selectedLoan);
+
+      // Insert repayment record
+      const { error: repaymentError } = await supabase
+        .from("repayments")
+        .insert({
+          loan_id: selectedLoan.id,
+          amount: repaymentAmount,
+          is_on_time: true, // You could add logic to determine this
+        });
+
+      if (repaymentError) throw repaymentError;
+
+      // Update borrower profile to increment successful loans count
+      const { data: currentProfile } = await supabase
+        .from("borrower_profiles")
+        .select("successful_loans_count")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (currentProfile) {
+        const { error: updateError } = await supabase
+          .from("borrower_profiles")
+          .update({
+            successful_loans_count: (currentProfile.successful_loans_count || 0) + 1,
+          })
+          .eq("user_id", user.id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Update loan status to completed
+      const { error: loanUpdateError } = await supabase
+        .from("loan_requests")
+        .update({ status: "completed" })
+        .eq("id", selectedLoan.id);
+
+      if (loanUpdateError) throw loanUpdateError;
+
+      toast.success("Repayment successful! Your track record has been updated.");
+      setIsRepayDialogOpen(false);
+      setSelectedLoan(null);
+      fetchMyLoans(); // Refresh the list
+    } catch (error: any) {
+      toast.error("Failed to process repayment: " + error.message);
+      console.error(error);
+    } finally {
+      setIsProcessingRepayment(false);
     }
   };
 
@@ -231,6 +307,32 @@ const MyLoans = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Repayment Button */}
+                    {loan.amount_funded >= loan.amount_requested && !loan.has_repayment && (
+                      <div className="pt-4 border-t">
+                        <Button
+                          onClick={() => {
+                            setSelectedLoan(loan);
+                            setIsRepayDialogOpen(true);
+                          }}
+                          className="w-full"
+                        >
+                          <DollarSign className="mr-2 h-4 w-4" />
+                          Make Repayment
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Repayment Completed Badge */}
+                    {loan.has_repayment && (
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-center gap-2 p-3 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg">
+                          <CheckCircle2 className="h-5 w-5" />
+                          <span className="font-semibold">Loan Repaid</span>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -238,6 +340,77 @@ const MyLoans = () => {
           </div>
         )}
       </div>
+
+      {/* Repayment Confirmation Dialog */}
+      <Dialog open={isRepayDialogOpen} onOpenChange={setIsRepayDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Repayment</DialogTitle>
+            <DialogDescription>
+              Review the repayment details for "{selectedLoan?.title}"
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedLoan && (
+            <div className="space-y-4">
+              <div className="space-y-2 p-4 bg-muted rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Principal Amount:</span>
+                  <span className="font-semibold">${selectedLoan.amount_funded.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Interest ({selectedLoan.interest_rate}% APR):</span>
+                  <span className="font-semibold">
+                    ${((selectedLoan.amount_funded * selectedLoan.interest_rate / 100 / 12) * selectedLoan.repayment_months).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Repayment Term:</span>
+                  <span className="font-semibold">{selectedLoan.repayment_months} months</span>
+                </div>
+                <div className="pt-2 border-t flex justify-between">
+                  <span className="font-bold">Total Repayment:</span>
+                  <span className="font-bold text-lg text-primary">
+                    ${calculateRepaymentAmount(selectedLoan).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                By confirming this repayment, your successful loans count will be increased and this loan will be marked as completed.
+              </p>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsRepayDialogOpen(false)}
+                  disabled={isProcessingRepayment}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRepayment}
+                  disabled={isProcessingRepayment}
+                  className="flex-1"
+                >
+                  {isProcessingRepayment ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Confirm Repayment
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
