@@ -8,22 +8,12 @@ import heroBg from "@/assets/hero-bg.jpg";
 const Index = () => {
   const navigate = useNavigate();
 
-  // Redirect authenticated users without a role to select-role
+  // Redirect authenticated users to dashboard
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if user has a role
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        
-        // If session exists but no role data, redirect to select-role
-        if (!roleData) {
-          navigate("/select-role");
-        }
+        navigate("/dashboard");
       }
     };
     checkSession();

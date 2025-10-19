@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +14,6 @@ import { TrendingUp, Loader2, Mail, Phone } from "lucide-react";
 const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { role, isLoading: roleLoading } = useUserRole();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,19 +21,12 @@ const Auth = () => {
   const [phone, setPhone] = useState("");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
 
-  // Redirect if already authenticated and has a role
+  // Redirect if already authenticated
   useEffect(() => {
-    if (user && !roleLoading) {
-      if (role === "borrower") {
-        navigate("/borrower-dashboard", { replace: true });
-      } else if (role === "investor") {
-        navigate("/investor-dashboard", { replace: true });
-      } else if (role === null) {
-        // User is logged in but has no role - go to select role
-        navigate("/select-role", { replace: true });
-      }
+    if (user) {
+      navigate("/dashboard", { replace: true });
     }
-  }, [user, role, roleLoading, navigate]);
+  }, [user, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +41,7 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/select-role`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
         if (error) throw error;
@@ -109,7 +100,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/select-role`,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) throw error;
