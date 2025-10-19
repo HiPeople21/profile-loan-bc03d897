@@ -583,6 +583,7 @@ const Dashboard = () => {
       {/* Navigation */}
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          {/* Logo - Left */}
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <TrendingUp className="h-5 w-5 text-primary-foreground" />
@@ -591,6 +592,8 @@ const Dashboard = () => {
               LendConnect
             </span>
           </div>
+          
+          {/* Actions - Right */}
           <div className="flex items-center gap-4">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
