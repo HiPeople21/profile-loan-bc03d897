@@ -171,13 +171,17 @@ const Dashboard = () => {
     try {
       const amount = parseFloat(investmentAmount);
       
-      if (amount <= 0) {
-        toast.error("Investment amount must be greater than 0");
+      const MIN_INVESTMENT = 10; // Minimum $10 investment
+      
+      if (amount < MIN_INVESTMENT) {
+        toast.error(`Minimum investment amount is $${MIN_INVESTMENT}`);
+        setIsSubmitting(false);
         return;
       }
 
       if (amount > (selectedLoan.amount_requested - selectedLoan.amount_funded)) {
         toast.error("Investment amount exceeds remaining loan amount");
+        setIsSubmitting(false);
         return;
       }
 
@@ -535,7 +539,8 @@ const Dashboard = () => {
                 id="invest-amount"
                 type="number"
                 step="0.01"
-                placeholder="Enter amount"
+                min="10"
+                placeholder="Enter amount (min $10)"
                 value={investmentAmount}
                 onChange={(e) => setInvestmentAmount(e.target.value)}
                 required
@@ -543,7 +548,7 @@ const Dashboard = () => {
               />
               {selectedLoan && (
                 <p className="text-xs text-muted-foreground">
-                  Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
+                  Min: $10 | Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
                 </p>
               )}
             </div>

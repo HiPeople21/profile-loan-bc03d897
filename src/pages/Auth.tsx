@@ -13,7 +13,7 @@ import { TrendingUp, Loader2, Mail, Phone } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,12 +21,12 @@ const Auth = () => {
   const [phone, setPhone] = useState("");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - simple and immediate
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       navigate("/dashboard", { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,11 +45,12 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Account created! You can now sign in.");
+        toast.success("Account created! Signing you in...");
+        // Success - the useEffect will handle redirect
       } else {
         const { error } = await supabase.auth.signUp({
           phone,
-          password: Math.random().toString(36).slice(-8), // Generate random password for phone auth
+          password: Math.random().toString(36).slice(-8),
           options: {
             data: {
               full_name: fullName,
@@ -58,12 +59,13 @@ const Auth = () => {
         });
         if (error) throw error;
         toast.success("Account created! You can now sign in.");
+        setIsLoading(false);
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign up");
-    } finally {
       setIsLoading(false);
     }
+    // Don't set isLoading to false here for email - let redirect happen
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -77,21 +79,23 @@ const Auth = () => {
           password,
         });
         if (error) throw error;
+        
+        // Success - the useEffect will handle redirect
+        toast.success("Signed in successfully!");
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           phone,
         });
         if (error) throw error;
         toast.success("Verification code sent to your phone!");
+        setIsLoading(false);
         return;
       }
-
-      toast.success("Signed in successfully!");
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
-    } finally {
       setIsLoading(false);
     }
+    // Don't set isLoading to false here for email - let redirect happen
   };
 
   const handleGoogleSignIn = async () => {
@@ -104,6 +108,7 @@ const Auth = () => {
         },
       });
       if (error) throw error;
+      // OAuth will handle redirect
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in with Google");
       setIsLoading(false);
@@ -211,7 +216,7 @@ const Auth = () => {
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {authMethod === "phone" ? "Sending code..." : "Signing in..."}
+                          Authenticating...
                         </>
                       ) : (
                         authMethod === "phone" ? "Send Verification Code" : "Sign In"
@@ -336,7 +341,7 @@ const Auth = () => {
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating account...
+                          Authenticating...
                         </>
                       ) : (
                         "Create Account"

@@ -1,23 +1,9 @@
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, TrendingUp, Users, CheckCircle } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 
 const Index = () => {
-  const navigate = useNavigate();
-
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/dashboard");
-      }
-    };
-    checkSession();
-  }, [navigate]);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
