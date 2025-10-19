@@ -18,7 +18,6 @@ import { calculateMinInvestment, formatMinInvestment } from "@/lib/investmentUti
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { maskName } from "@/lib/utils";
 
 interface LoanRequest {
   id: string;
@@ -932,7 +931,7 @@ const Dashboard = () => {
                           onClick={() => navigate(`/profile/${loan.borrower_id}`)}
                           className="font-medium text-primary hover:underline cursor-pointer"
                         >
-                          {maskName(loan.borrower?.full_name)}
+                          {loan.borrower?.full_name || "User"}
                         </button>
                         {isOwnLoan && (
                           <Badge variant="outline" className="ml-auto">Your Request</Badge>

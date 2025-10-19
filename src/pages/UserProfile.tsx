@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, User, Star, TrendingUp, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { maskName } from "@/lib/utils";
 
 interface UserProfileData {
   id: string;
@@ -187,7 +186,7 @@ const UserProfile = () => {
                 </Avatar>
                 <div className="flex-1">
                   <CardTitle className="text-3xl mb-2">
-                    {maskName(profile.full_name)}
+                    {profile.full_name || "Anonymous User"}
                   </CardTitle>
                   {stats && (
                     <div className="flex items-center gap-2">
