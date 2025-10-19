@@ -18,6 +18,8 @@ interface UserStatsData {
   totalBorrowed: number;
   totalInvested: number;
   rating: number;
+  successfulLoans: number;
+  defaults: number;
 }
 
 const UserProfile = () => {
@@ -75,9 +77,13 @@ const UserProfile = () => {
 
       // Calculate star rating (0-5)
       let rating = 3; // Default neutral rating
+      let successfulLoans = 0;
+      let defaults = 0;
       
       if (borrowerProfile) {
         const { credit_score, successful_loans_count, defaults_count } = borrowerProfile;
+        successfulLoans = successful_loans_count || 0;
+        defaults = defaults_count || 0;
         
         // Start with credit score influence (if available)
         if (credit_score) {
@@ -111,6 +117,8 @@ const UserProfile = () => {
         totalBorrowed,
         totalInvested,
         rating: Math.round(rating * 2) / 2, // Round to nearest 0.5
+        successfulLoans,
+        defaults,
       });
     } catch (error: any) {
       toast.error("Failed to load user profile");
@@ -227,6 +235,22 @@ const UserProfile = () => {
                       </CardContent>
                     </Card>
                   </div>
+                  
+                  {/* Track Record */}
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground mb-3 text-center">Track Record</p>
+                      <div className="text-center text-sm">
+                        <span className="text-green-600 dark:text-green-400 font-semibold">
+                          {stats.successfulLoans} successful
+                        </span>
+                        <span className="text-muted-foreground mx-2">•</span>
+                        <span className="text-red-600 dark:text-red-400 font-semibold">
+                          {stats.defaults} defaults
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </>
               )}
             </CardContent>
