@@ -130,10 +130,10 @@ const MyLoans = () => {
 
       if (repaymentError) throw repaymentError;
 
-      // Update borrower profile to increment successful loans count
+      // Update borrower profile to increment successful loans count and total repaid
       const { data: currentProfile } = await supabase
         .from("borrower_profiles")
-        .select("successful_loans_count")
+        .select("successful_loans_count, total_repaid")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -142,6 +142,7 @@ const MyLoans = () => {
           .from("borrower_profiles")
           .update({
             successful_loans_count: (currentProfile.successful_loans_count || 0) + 1,
+            total_repaid: (currentProfile.total_repaid || 0) + repaymentAmount,
           })
           .eq("user_id", user.id);
 
