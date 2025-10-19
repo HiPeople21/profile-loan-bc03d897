@@ -5,11 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, LogOut } from "lucide-react";
+import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface LoanRequest {
@@ -45,6 +47,7 @@ const Dashboard = () => {
   const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<LoanRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userProfile, setUserProfile] = useState<{ avatar_url: string | null; full_name: string | null }>({ avatar_url: null, full_name: null });
 
   // Create loan form state
   const [newLoan, setNewLoan] = useState({
@@ -64,7 +67,22 @@ const Dashboard = () => {
       return;
     }
     fetchLoanRequests();
+    fetchUserProfile();
   }, [user, navigate]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("profiles")
+      .select("avatar_url, full_name")
+      .eq("id", user.id)
+      .single();
+    
+    if (data) {
+      setUserProfile(data);
+    }
+  };
 
   const fetchLoanRequests = async () => {
     try {
@@ -215,9 +233,6 @@ const Dashboard = () => {
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden md:inline">
-              {user?.email}
-            </span>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="hero">
@@ -314,9 +329,49 @@ const Dashboard = () => {
                 </form>
               </DialogContent>
             </Dialog>
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="h-5 w-5" />
-            </Button>
+            
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={userProfile.avatar_url || undefined} />
+                    <AvatarFallback>
+                      <User className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {userProfile.full_name || "User"}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/my-loans")}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  My Loans
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/my-investments")}>
+                  <TrendingDown className="mr-2 h-4 w-4" />
+                  My Investments
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </nav>
