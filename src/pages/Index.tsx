@@ -1,9 +1,33 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, TrendingUp, Users, CheckCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import heroBg from "@/assets/hero-bg.jpg";
 
 const Index = () => {
+  const navigate = useNavigate();
+
+  // Clear any stale sessions on mount
+  useEffect(() => {
+    const clearSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Check if user still exists in database
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        
+        // If session exists but no role data, likely stale session - clear it
+        if (!roleData) {
+          await supabase.auth.signOut();
+        }
+      }
+    };
+    clearSession();
+  }, []);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}

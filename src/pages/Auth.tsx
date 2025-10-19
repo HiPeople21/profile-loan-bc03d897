@@ -23,17 +23,16 @@ const Auth = () => {
   const [phone, setPhone] = useState("");
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated and has a role
   useEffect(() => {
     if (user && !roleLoading) {
-      if (!role) {
-        navigate("/select-role");
-      } else if (role === "borrower") {
-        navigate("/borrower-dashboard");
+      if (role === "borrower") {
+        navigate("/borrower-dashboard", { replace: true });
       } else if (role === "investor") {
-        navigate("/investor-dashboard");
-      } else {
-        navigate("/");
+        navigate("/investor-dashboard", { replace: true });
+      } else if (role === null) {
+        // User is logged in but has no role - go to select role
+        navigate("/select-role", { replace: true });
       }
     }
   }, [user, role, roleLoading, navigate]);
