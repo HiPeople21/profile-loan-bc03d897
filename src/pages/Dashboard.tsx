@@ -306,15 +306,17 @@ const Dashboard = () => {
     setIsSubmitting(true);
     try {
       const amount = parseFloat(investmentAmount);
-      const minInvestment = calculateMinInvestment(selectedLoan.amount_requested);
+      const remainingAmount = selectedLoan.amount_requested - selectedLoan.amount_funded;
+      const calculatedMinInvestment = calculateMinInvestment(selectedLoan.amount_requested);
+      const effectiveMinInvestment = Math.min(calculatedMinInvestment, remainingAmount);
       
-      if (amount < minInvestment) {
-        toast.error(`Minimum investment is ${formatMinInvestment(minInvestment)} for this loan`);
+      if (amount < effectiveMinInvestment) {
+        toast.error(`Minimum investment is ${formatMinInvestment(effectiveMinInvestment)} for this loan`);
         setIsSubmitting(false);
         return;
       }
 
-      if (amount > (selectedLoan.amount_requested - selectedLoan.amount_funded)) {
+      if (amount > remainingAmount) {
         toast.error("Investment amount exceeds remaining loan amount");
         setIsSubmitting(false);
         return;
@@ -1237,8 +1239,8 @@ const Dashboard = () => {
                 id="invest-amount"
                 type="number"
                 step="0.01"
-                min={selectedLoan ? calculateMinInvestment(selectedLoan.amount_requested) : 10}
-                placeholder={selectedLoan ? `Min: ${formatMinInvestment(calculateMinInvestment(selectedLoan.amount_requested))}` : "Enter amount"}
+                min={selectedLoan ? Math.min(calculateMinInvestment(selectedLoan.amount_requested), selectedLoan.amount_requested - selectedLoan.amount_funded) : 10}
+                placeholder={selectedLoan ? `Min: ${formatMinInvestment(Math.min(calculateMinInvestment(selectedLoan.amount_requested), selectedLoan.amount_requested - selectedLoan.amount_funded))}` : "Enter amount"}
                 value={investmentAmount}
                 onChange={(e) => setInvestmentAmount(e.target.value)}
                 required
@@ -1251,8 +1253,9 @@ const Dashboard = () => {
                   {[10, 25, 50, 75, 100].map((percentage) => {
                     const remainingAmount = selectedLoan.amount_requested - selectedLoan.amount_funded;
                     const amount = (remainingAmount * percentage) / 100;
-                    const minInvestment = calculateMinInvestment(selectedLoan.amount_requested);
-                    const isDisabled = amount < minInvestment && percentage !== 100;
+                    const calculatedMinInvestment = calculateMinInvestment(selectedLoan.amount_requested);
+                    const effectiveMinInvestment = Math.min(calculatedMinInvestment, remainingAmount);
+                    const isDisabled = amount < effectiveMinInvestment && percentage !== 100;
                     
                     return (
                       <Button
@@ -1277,7 +1280,7 @@ const Dashboard = () => {
               {selectedLoan && (
                 <div className="space-y-1 text-xs text-muted-foreground">
                   <p>
-                    Min: {formatMinInvestment(calculateMinInvestment(selectedLoan.amount_requested))} | Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
+                    Min: {formatMinInvestment(Math.min(calculateMinInvestment(selectedLoan.amount_requested), selectedLoan.amount_requested - selectedLoan.amount_funded))} | Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
                   </p>
                   {investmentAmount && parseFloat(investmentAmount) > 0 && (
                     <div className="mt-3 p-3 bg-muted rounded-lg space-y-1">
