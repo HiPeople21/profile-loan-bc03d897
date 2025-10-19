@@ -152,11 +152,19 @@ const Dashboard = () => {
     setIsSubmitting(true);
     try {
       const amount = parseFloat(newLoan.amount_requested);
+      const interestRate = parseFloat(newLoan.interest_rate);
       
       const MIN_BORROW = 100;
+      const MIN_INTEREST = 4;
       
       if (amount < MIN_BORROW) {
         toast.error(`Minimum loan amount is $${MIN_BORROW}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (interestRate < MIN_INTEREST) {
+        toast.error(`Minimum interest rate is ${MIN_INTEREST}%`);
         setIsSubmitting(false);
         return;
       }
@@ -166,7 +174,7 @@ const Dashboard = () => {
         title: newLoan.title,
         description: newLoan.description,
         amount_requested: amount,
-        interest_rate: parseFloat(newLoan.interest_rate),
+        interest_rate: interestRate,
         repayment_months: parseInt(newLoan.repayment_months),
         currency: "USD",
         status: "open",
@@ -326,16 +334,18 @@ const Dashboard = () => {
                       <p className="text-xs text-muted-foreground">Minimum: $100</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="interest">Interest Rate (%)</Label>
+                      <Label htmlFor="interest">Interest Rate (% APR)</Label>
                       <Input
                         id="interest"
                         type="number"
                         step="0.1"
+                        min="4"
                         placeholder="5.5"
                         value={newLoan.interest_rate}
                         onChange={(e) => setNewLoan({ ...newLoan, interest_rate: e.target.value })}
                         required
                       />
+                      <p className="text-xs text-muted-foreground">Minimum: 4% annual</p>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -504,7 +514,7 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Percent className="h-4 w-4" />
-                          Interest Rate
+                          {isOwnLoan ? "Interest (APR)" : "Return Rate (APR)"}
                         </div>
                         <span className="font-semibold">{loan.interest_rate}%</span>
                       </div>
@@ -586,9 +596,32 @@ const Dashboard = () => {
                 max={selectedLoan ? selectedLoan.amount_requested - selectedLoan.amount_funded : undefined}
               />
               {selectedLoan && (
-                <p className="text-xs text-muted-foreground">
-                  Min: {formatMinInvestment(calculateMinInvestment(selectedLoan.amount_requested))} | Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
-                </p>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>
+                    Min: {formatMinInvestment(calculateMinInvestment(selectedLoan.amount_requested))} | Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
+                  </p>
+                  {investmentAmount && parseFloat(investmentAmount) > 0 && (
+                    <div className="mt-3 p-3 bg-muted rounded-lg space-y-1">
+                      <p className="font-medium text-foreground">Expected Returns:</p>
+                      <p>
+                        Interest Rate: <span className="font-semibold text-foreground">{selectedLoan.interest_rate}% APR</span>
+                      </p>
+                      <p>
+                        Total Return: <span className="font-semibold text-foreground">
+                          ${(parseFloat(investmentAmount) * (1 + (selectedLoan.interest_rate / 100) * (selectedLoan.repayment_months / 12))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                      <p>
+                        Profit: <span className="font-semibold text-primary">
+                          +${(parseFloat(investmentAmount) * (selectedLoan.interest_rate / 100) * (selectedLoan.repayment_months / 12)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                      <p className="text-[10px] mt-1 text-muted-foreground">
+                        Over {selectedLoan.repayment_months} month period
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <div className="flex gap-2">
