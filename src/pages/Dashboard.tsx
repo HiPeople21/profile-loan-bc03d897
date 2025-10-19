@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { calculateMinInvestment, formatMinInvestment } from "@/lib/investmentUtils";
 
 interface LoanRequest {
   id: string;
@@ -150,11 +151,21 @@ const Dashboard = () => {
 
     setIsSubmitting(true);
     try {
+      const amount = parseFloat(newLoan.amount_requested);
+      
+      const MIN_BORROW = 100;
+      
+      if (amount < MIN_BORROW) {
+        toast.error(`Minimum loan amount is $${MIN_BORROW}`);
+        setIsSubmitting(false);
+        return;
+      }
+
       const { error } = await supabase.from("loan_requests").insert({
         borrower_id: user.id,
         title: newLoan.title,
         description: newLoan.description,
-        amount_requested: parseFloat(newLoan.amount_requested),
+        amount_requested: amount,
         interest_rate: parseFloat(newLoan.interest_rate),
         repayment_months: parseInt(newLoan.repayment_months),
         currency: "USD",
@@ -187,11 +198,10 @@ const Dashboard = () => {
     setIsSubmitting(true);
     try {
       const amount = parseFloat(investmentAmount);
+      const minInvestment = calculateMinInvestment(selectedLoan.amount_requested);
       
-      const MIN_INVESTMENT = 10; // Minimum $10 investment
-      
-      if (amount < MIN_INVESTMENT) {
-        toast.error(`Minimum investment amount is $${MIN_INVESTMENT}`);
+      if (amount < minInvestment) {
+        toast.error(`Minimum investment is ${formatMinInvestment(minInvestment)} for this loan`);
         setIsSubmitting(false);
         return;
       }
@@ -307,11 +317,13 @@ const Dashboard = () => {
                         id="amount"
                         type="number"
                         step="0.01"
+                        min="100"
                         placeholder="10000"
                         value={newLoan.amount_requested}
                         onChange={(e) => setNewLoan({ ...newLoan, amount_requested: e.target.value })}
                         required
                       />
+                      <p className="text-xs text-muted-foreground">Minimum: $100</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="interest">Interest Rate (%)</Label>
@@ -566,8 +578,8 @@ const Dashboard = () => {
                 id="invest-amount"
                 type="number"
                 step="0.01"
-                min="10"
-                placeholder="Enter amount (min $10)"
+                min={selectedLoan ? calculateMinInvestment(selectedLoan.amount_requested) : 10}
+                placeholder={selectedLoan ? `Min: ${formatMinInvestment(calculateMinInvestment(selectedLoan.amount_requested))}` : "Enter amount"}
                 value={investmentAmount}
                 onChange={(e) => setInvestmentAmount(e.target.value)}
                 required
@@ -575,7 +587,7 @@ const Dashboard = () => {
               />
               {selectedLoan && (
                 <p className="text-xs text-muted-foreground">
-                  Min: $10 | Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
+                  Min: {formatMinInvestment(calculateMinInvestment(selectedLoan.amount_requested))} | Max: ${(selectedLoan.amount_requested - selectedLoan.amount_funded).toLocaleString()}
                 </p>
               )}
             </div>
