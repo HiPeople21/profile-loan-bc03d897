@@ -94,8 +94,10 @@ const Dashboard = () => {
 
       if (loansError) throw loansError;
 
+      const loanIds = [...new Set((loans || []).map((l) => l.id))];
+
       // Fetch profiles for all borrowers
-      const borrowerIds = [...new Set(loans?.map(loan => loan.borrower_id))];
+      const borrowerIds = [...new Set((loans || []).map((loan) => loan.borrower_id))];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name")
@@ -111,11 +113,26 @@ const Dashboard = () => {
 
       if (borrowerProfilesError) throw borrowerProfilesError;
 
-      // Combine the data
-      const enrichedLoans: LoanRequest[] = (loans || []).map(loan => ({
+      // Fetch investments for these loans and aggregate funded amounts client-side
+      const { data: investments, error: investmentsError } = await supabase
+        .from("investments")
+        .select("loan_id, amount")
+        .in("loan_id", loanIds);
+
+      if (investmentsError) throw investmentsError;
+
+      const fundedMap = new Map<string, number>();
+      (investments || []).forEach((inv) => {
+        const prev = fundedMap.get(inv.loan_id) || 0;
+        fundedMap.set(inv.loan_id, Number((prev + Number(inv.amount)).toFixed(2)));
+      });
+
+      // Combine the data and override amount_funded using aggregated investments
+      const enrichedLoans: LoanRequest[] = (loans || []).map((loan) => ({
         ...loan,
-        borrower: profiles?.find(p => p.id === loan.borrower_id) || null,
-        borrower_profile: borrowerProfiles?.find(bp => bp.user_id === loan.borrower_id) || null,
+        amount_funded: fundedMap.get(loan.id) ?? Number(loan.amount_funded ?? 0),
+        borrower: profiles?.find((p) => p.id === loan.borrower_id) || null,
+        borrower_profile: borrowerProfiles?.find((bp) => bp.user_id === loan.borrower_id) || null,
       }));
 
       setLoanRequests(enrichedLoans);
@@ -193,10 +210,20 @@ const Dashboard = () => {
 
       if (error) throw error;
 
+      // Optimistically update UI so progress bar and percentage update instantly
+      setLoanRequests((prev) =>
+        prev.map((l) =>
+          l.id === selectedLoan.id
+            ? { ...l, amount_funded: Number((l.amount_funded + amount).toFixed(2)) }
+            : l
+        )
+      );
+
       toast.success("Investment successful!");
       setIsInvestDialogOpen(false);
       setInvestmentAmount("");
       setSelectedLoan(null);
+      // Refresh from backend as fallback
       fetchLoanRequests();
     } catch (error: any) {
       toast.error(error.message || "Failed to invest");
