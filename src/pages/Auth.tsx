@@ -43,8 +43,10 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      const selectedRole = localStorage.getItem("selectedRole") as "borrower" | "investor" | null;
+      
       if (authMethod === "email") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -55,9 +57,20 @@ const Auth = () => {
           },
         });
         if (error) throw error;
+        
+        // Assign role if selected
+        if (selectedRole && data.user) {
+          const { error: roleError } = await supabase
+            .from("user_roles")
+            .insert({ user_id: data.user.id, role: selectedRole });
+          
+          if (roleError) console.error("Failed to assign role:", roleError);
+          localStorage.removeItem("selectedRole");
+        }
+        
         toast.success("Account created! Verification email sent.");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           phone,
           password: Math.random().toString(36).slice(-8), // Generate random password for phone auth
           options: {
@@ -67,6 +80,17 @@ const Auth = () => {
           },
         });
         if (error) throw error;
+        
+        // Assign role if selected
+        if (selectedRole && data.user) {
+          const { error: roleError } = await supabase
+            .from("user_roles")
+            .insert({ user_id: data.user.id, role: selectedRole });
+          
+          if (roleError) console.error("Failed to assign role:", roleError);
+          localStorage.removeItem("selectedRole");
+        }
+        
         toast.success("Account created! Verification code sent to your phone.");
       }
     } catch (error: any) {

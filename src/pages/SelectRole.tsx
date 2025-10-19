@@ -1,61 +1,31 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
-import { TrendingUp, UserCircle, Wallet, Loader2 } from "lucide-react";
+import { TrendingUp, UserCircle, Wallet } from "lucide-react";
 
 const SelectRole = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const { role, isLoading: roleLoading } = useUserRole();
 
-  // Redirect to auth if not logged in
+  // Redirect authenticated users with roles to their dashboard
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth", { replace: true });
-    }
-  }, [user, authLoading, navigate]);
-
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Don't render if not authenticated
-  if (!user) {
-    return null;
-  }
-
-  const handleRoleSelection = async (role: "borrower" | "investor") => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from("user_roles")
-        .insert({ user_id: user.id, role });
-
-      if (error) throw error;
-
-      toast.success(`Welcome as ${role}!`);
-      
+    if (!authLoading && !roleLoading && user && role) {
       if (role === "borrower") {
-        navigate("/borrower-dashboard");
-      } else {
-        navigate("/investor-dashboard");
+        navigate("/borrower-dashboard", { replace: true });
+      } else if (role === "investor") {
+        navigate("/investor-dashboard", { replace: true });
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to set role");
-    } finally {
-      setIsLoading(false);
     }
+  }, [user, role, authLoading, roleLoading, navigate]);
+
+  const handleRoleSelection = (role: "borrower" | "investor") => {
+    // Store selected role and redirect to signup
+    localStorage.setItem("selectedRole", role);
+    navigate("/auth");
   };
 
   return (
@@ -108,16 +78,8 @@ const SelectRole = () => {
                 size="lg"
                 className="w-full"
                 onClick={() => handleRoleSelection("borrower")}
-                disabled={isLoading}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Setting up...
-                  </>
-                ) : (
-                  "Continue as Borrower"
-                )}
+                Continue as Borrower
               </Button>
             </CardContent>
           </Card>
@@ -152,16 +114,8 @@ const SelectRole = () => {
                 size="lg"
                 className="w-full"
                 onClick={() => handleRoleSelection("investor")}
-                disabled={isLoading}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Setting up...
-                  </>
-                ) : (
-                  "Continue as Investor"
-                )}
+                Continue as Investor
               </Button>
             </CardContent>
           </Card>
