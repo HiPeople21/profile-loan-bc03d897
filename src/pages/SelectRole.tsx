@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,17 +13,28 @@ const SelectRole = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
   const [isLoading, setIsLoading] = useState(false);
+  const hasRedirected = useRef(false);
 
-  // Redirect to auth if not logged in
+  // Single effect to handle all redirects
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (hasRedirected.current) return;
+    
+    // Wait for auth to load
+    if (authLoading) return;
+
+    // Redirect to auth if not logged in
+    if (!user) {
+      hasRedirected.current = true;
       navigate("/auth", { replace: true });
+      return;
     }
-  }, [user, authLoading, navigate]);
 
-  // Redirect authenticated users with roles to their dashboard
-  useEffect(() => {
-    if (!authLoading && !roleLoading && user && role) {
+    // Wait for role to load
+    if (roleLoading) return;
+
+    // Redirect if user already has a role
+    if (role) {
+      hasRedirected.current = true;
       if (role === "borrower") {
         navigate("/borrower-dashboard", { replace: true });
       } else if (role === "investor") {
@@ -32,8 +43,8 @@ const SelectRole = () => {
     }
   }, [user, role, authLoading, roleLoading, navigate]);
 
-  // Show loading while checking auth
-  if (authLoading || roleLoading) {
+  // Show loading state
+  if (authLoading || roleLoading || hasRedirected.current) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -41,7 +52,7 @@ const SelectRole = () => {
     );
   }
 
-  // Don't render if not authenticated
+  // Don't render if not authenticated (safety check)
   if (!user) {
     return null;
   }
