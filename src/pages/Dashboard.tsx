@@ -946,9 +946,12 @@ const Dashboard = () => {
                     <div className="p-3 bg-muted rounded-lg space-y-2">
                       <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-primary" />
-                        <span className="font-medium">
+                        <button
+                          onClick={() => navigate(`/profile/${loan.borrower_id}`)}
+                          className="font-medium text-primary hover:underline cursor-pointer"
+                        >
                           {loan.borrower?.full_name || "Anonymous"}
-                        </span>
+                        </button>
                         {isOwnLoan && (
                           <Badge variant="outline" className="ml-auto">Your Request</Badge>
                         )}
