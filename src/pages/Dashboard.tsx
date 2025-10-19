@@ -18,6 +18,7 @@ import { calculateMinInvestment, formatMinInvestment } from "@/lib/investmentUti
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { maskName } from "@/lib/utils";
 
 interface LoanRequest {
   id: string;
@@ -34,6 +35,7 @@ interface LoanRequest {
   borrower: {
     id: string;
     full_name: string | null;
+    avatar_url: string | null;
   } | null;
   borrower_profile: {
     credit_score: number | null;
@@ -199,7 +201,7 @@ const Dashboard = () => {
       const borrowerIds = [...new Set((loans || []).map((loan) => loan.borrower_id))];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, avatar_url")
         .in("id", borrowerIds);
 
       if (profilesError) throw profilesError;
@@ -318,33 +320,22 @@ const Dashboard = () => {
         return;
       }
 
-      const { error } = await supabase.from("investments").insert({
-        investor_id: user.id,
-        loan_id: selectedLoan.id,
-        amount: amount,
-        is_anonymous: isAnonymous,
-      });
-
-      if (error) throw error;
-
-      // Optimistically update UI so progress bar and percentage update instantly
-      setLoanRequests((prev) =>
-        prev.map((l) =>
-          l.id === selectedLoan.id
-            ? { ...l, amount_funded: Number((l.amount_funded + amount).toFixed(2)) }
-            : l
-        )
-      );
-
-      toast.success("Investment successful!");
+      // Navigate to payment page instead of directly submitting
       setIsInvestDialogOpen(false);
+      navigate("/payment", {
+        state: {
+          loanId: selectedLoan.id,
+          amount: amount,
+          isAnonymous: isAnonymous,
+          loanTitle: selectedLoan.title,
+        }
+      });
+      
       setInvestmentAmount("");
       setIsAnonymous(false);
       setSelectedLoan(null);
-      // Refresh from backend as fallback
-      fetchLoanRequests();
     } catch (error: any) {
-      toast.error(error.message || "Failed to invest");
+      toast.error(error.message || "Failed to proceed to payment");
     } finally {
       setIsSubmitting(false);
     }
@@ -929,12 +920,17 @@ const Dashboard = () => {
                     {/* Borrower Info */}
                     <div className="p-3 bg-muted rounded-lg space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <User className="h-4 w-4 text-primary" />
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={loan.borrower?.avatar_url || undefined} />
+                          <AvatarFallback>
+                            <User className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
                         <button
                           onClick={() => navigate(`/profile/${loan.borrower_id}`)}
                           className="font-medium text-primary hover:underline cursor-pointer"
                         >
-                          {loan.borrower?.full_name || "User"}
+                          {maskName(loan.borrower?.full_name)}
                         </button>
                         {isOwnLoan && (
                           <Badge variant="outline" className="ml-auto">Your Request</Badge>
