@@ -178,7 +178,7 @@ const MyInvestments = () => {
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground mb-1">Expected Return</p>
                           <p className="text-2xl font-bold text-accent">
-                            ${(investment.amount * (1 + loan.interest_rate / 100)).toLocaleString()}
+                            ${(investment.amount * (1 + (loan.interest_rate / 100) * (loan.repayment_months / 12))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                         </div>
                       </div>
