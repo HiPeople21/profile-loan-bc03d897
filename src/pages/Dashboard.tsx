@@ -1206,6 +1206,36 @@ const Dashboard = () => {
                 required
                 max={selectedLoan ? selectedLoan.amount_requested - selectedLoan.amount_funded : undefined}
               />
+              
+              {/* Quick Amount Buttons */}
+              {selectedLoan && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {[10, 25, 50, 75, 100].map((percentage) => {
+                    const remainingAmount = selectedLoan.amount_requested - selectedLoan.amount_funded;
+                    const amount = (remainingAmount * percentage) / 100;
+                    const minInvestment = calculateMinInvestment(selectedLoan.amount_requested);
+                    const isDisabled = amount < minInvestment && percentage !== 100;
+                    
+                    return (
+                      <Button
+                        key={percentage}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isDisabled}
+                        onClick={() => setInvestmentAmount(amount.toFixed(2))}
+                        className="text-xs"
+                      >
+                        {percentage === 100 ? 'Full Amount' : `${percentage}%`}
+                        <span className="ml-1 text-muted-foreground">
+                          ${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+              
               {selectedLoan && (
                 <div className="space-y-1 text-xs text-muted-foreground">
                   <p>
