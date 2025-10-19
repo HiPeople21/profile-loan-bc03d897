@@ -21,7 +21,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<SelectRole />} />
+          <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/select-role" element={<SelectRole />} />
           <Route path="/borrower-dashboard" element={<ProtectedRoute requiredRole="borrower"><BorrowerDashboard /></ProtectedRoute>} />
