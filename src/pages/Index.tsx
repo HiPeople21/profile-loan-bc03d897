@@ -11,6 +11,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import heroBg from "@/assets/hero-bg.jpg";
+import { z } from "zod";
+
+// Input validation schemas
+const signUpSchema = z.object({
+  email: z.string()
+    .trim()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  fullName: z.string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes')
+});
+
+const signInSchema = z.object({
+  email: z.string()
+    .trim()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters'),
+  password: z.string()
+    .min(1, 'Password is required')
+});
 
 const Index = () => {
   const navigate = useNavigate();
@@ -34,13 +63,27 @@ const Index = () => {
     setIsLoading(true);
 
     try {
+      // Validate input based on mode
       if (isSignUp) {
+        const result = signUpSchema.safeParse({ 
+          email: email.trim(), 
+          password, 
+          fullName: fullName.trim() 
+        });
+        
+        if (!result.success) {
+          const firstError = result.error.errors[0];
+          toast.error(firstError.message);
+          setIsLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: result.data.email,
+          password: result.data.password,
           options: {
             data: {
-              full_name: fullName,
+              full_name: result.data.fullName,
             },
             emailRedirectTo: `${window.location.origin}/dashboard`,
           },
@@ -48,9 +91,21 @@ const Index = () => {
         if (error) throw error;
         toast.success("Account created! Signing you in...");
       } else {
+        const result = signInSchema.safeParse({ 
+          email: email.trim(), 
+          password 
+        });
+        
+        if (!result.success) {
+          const firstError = result.error.errors[0];
+          toast.error(firstError.message);
+          setIsLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: result.data.email,
+          password: result.data.password,
         });
         if (error) throw error;
         toast.success("Signed in successfully!");
@@ -334,10 +389,11 @@ const Index = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                minLength={8}
               />
               {isSignUp && (
-                <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
+                <p className="text-xs text-muted-foreground">
+                  Must be at least 12 characters with uppercase, lowercase, number, and special character
+                </p>
               )}
             </div>
             <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
