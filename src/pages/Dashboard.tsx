@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SUPPORTED_CURRENCIES, getCurrencySymbol, formatCurrency, getConversionRateText } from "@/lib/currencyUtils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface LoanRequest {
   id: string;
@@ -595,6 +596,7 @@ const Dashboard = () => {
           
           {/* Actions - Right */}
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="hero">
