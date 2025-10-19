@@ -115,6 +115,10 @@ const Settings = () => {
       if (updateError) throw updateError;
 
       setProfile({ ...profile, avatar_url: avatarUrlWithTimestamp });
+      
+      // Force refetch on dashboard by updating the timestamp
+      await fetchProfile();
+      
       toast.success("Profile picture updated!");
     } catch (error: any) {
       toast.error(error.message || "Failed to upload image");

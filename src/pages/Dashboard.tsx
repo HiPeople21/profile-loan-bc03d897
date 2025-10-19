@@ -379,17 +379,9 @@ const Dashboard = () => {
 
     setIsSubmitting(true);
     try {
-      // Check if there are any investments
-      const { data: investments, error: investError } = await supabase
-        .from("investments")
-        .select("id")
-        .eq("loan_id", selectedLoan.id)
-        .limit(1);
-
-      if (investError) throw investError;
-
-      if (investments && investments.length > 0) {
-        toast.error("Cannot edit loan request with existing investments");
+      // Check if loan has received any funding
+      if (selectedLoan.amount_funded > 0) {
+        toast.error("Cannot edit loan request that has received funding");
         setIsSubmitting(false);
         return;
       }
@@ -442,17 +434,9 @@ const Dashboard = () => {
 
     setIsSubmitting(true);
     try {
-      // Check if there are any investments
-      const { data: investments, error: investError } = await supabase
-        .from("investments")
-        .select("id")
-        .eq("loan_id", selectedLoan.id)
-        .limit(1);
-
-      if (investError) throw investError;
-
-      if (investments && investments.length > 0) {
-        toast.error("Cannot delete loan request with existing investments");
+      // Check if loan has received any funding
+      if (selectedLoan.amount_funded > 0) {
+        toast.error("Cannot delete loan request that has received funding");
         setIsSubmitting(false);
         return;
       }
@@ -946,7 +930,7 @@ const Dashboard = () => {
                           onClick={() => navigate(`/profile/${loan.borrower_id}`)}
                           className="font-medium text-primary hover:underline cursor-pointer"
                         >
-                          {loan.borrower?.full_name || "Anonymous"}
+                          {loan.borrower?.full_name || "User"}
                         </button>
                         {isOwnLoan && (
                           <Badge variant="outline" className="ml-auto">Your Request</Badge>
@@ -1022,7 +1006,7 @@ const Dashboard = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    {isOwnLoan && loan.status === "open" && (
+                    {isOwnLoan && loan.status === "open" && loan.amount_funded === 0 && (
                       <div className="flex gap-2">
                         <Button
                           onClick={() => openEditDialog(loan)}
@@ -1041,6 +1025,11 @@ const Dashboard = () => {
                           Delete
                         </Button>
                       </div>
+                    )}
+                    {isOwnLoan && loan.amount_funded > 0 && (
+                      <p className="text-xs text-muted-foreground text-center p-2 bg-muted/50 rounded">
+                        Cannot edit or delete loan with funding received
+                      </p>
                     )}
                     {!isOwnLoan && loan.status === "open" && remainingAmount > 0 && (
                       <Button

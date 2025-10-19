@@ -299,7 +299,7 @@ const Index = () => {
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName">Full Name *</Label>
                 <Input
                   id="fullName"
                   type="text"
@@ -308,6 +308,7 @@ const Index = () => {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   disabled={isLoading}
+                  minLength={2}
                 />
               </div>
             )}
