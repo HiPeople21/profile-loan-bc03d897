@@ -70,10 +70,13 @@ const SelectRole = () => {
 
       toast.success(`Welcome as ${selectedRole}!`);
       
+      // Add a small delay to ensure the role is properly set before navigation
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       if (selectedRole === "borrower") {
-        navigate("/borrower-dashboard");
+        navigate("/borrower-dashboard", { replace: true });
       } else {
-        navigate("/investor-dashboard");
+        navigate("/investor-dashboard", { replace: true });
       }
     } catch (error: any) {
       const msg = error?.message || "Failed to set role";
@@ -81,14 +84,32 @@ const SelectRole = () => {
       if (msg.toLowerCase().includes("row level security") || msg.toLowerCase().includes("row-level security")) {
         navigate("/auth", { replace: true });
       }
-    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-      <div className="w-full max-w-4xl">
+    <>
+      {/* Full-screen loading overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+          <div className="text-center space-y-6">
+            <div className="relative">
+              <div className="h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <TrendingUp className="h-8 w-8 text-primary animate-pulse" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold">Setting up your account</h2>
+              <p className="text-muted-foreground">Please wait while we prepare your dashboard...</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+        <div className="w-full max-w-4xl">
         <div className="flex items-center justify-center gap-2 mb-8">
           <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
             <TrendingUp className="h-6 w-6 text-primary-foreground" />
@@ -196,6 +217,7 @@ const SelectRole = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
