@@ -43,8 +43,8 @@ const SelectRole = () => {
     }
   }, [user, role, authLoading, roleLoading, navigate]);
 
-  // Show loading state
-  if (authLoading || roleLoading || hasRedirected.current) {
+  // Show loading while auth/role load
+  if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -76,7 +76,11 @@ const SelectRole = () => {
         navigate("/investor-dashboard");
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to set role");
+      const msg = error?.message || "Failed to set role";
+      toast.error(msg);
+      if (msg.toLowerCase().includes("row level security") || msg.toLowerCase().includes("row-level security")) {
+        navigate("/auth", { replace: true });
+      }
     } finally {
       setIsLoading(false);
     }
