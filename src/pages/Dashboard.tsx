@@ -88,7 +88,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate("/auth", { replace: true });
+      navigate("/", { replace: true });
       return;
     }
     fetchLoanRequests();
