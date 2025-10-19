@@ -55,7 +55,7 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Account created! Please check your email to verify.");
+        toast.success("Account created! You can now sign in.");
       } else {
         const { error } = await supabase.auth.signUp({
           phone,
@@ -67,7 +67,7 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Account created! Verification code sent to your phone.");
+        toast.success("Account created! You can now sign in.");
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign up");
