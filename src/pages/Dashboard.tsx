@@ -11,10 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown, Filter, ArrowUpDown } from "lucide-react";
+import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown, Filter, ArrowUpDown, Edit, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { calculateMinInvestment, formatMinInvestment } from "@/lib/investmentUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface LoanRequest {
   id: string;
@@ -46,13 +47,23 @@ const Dashboard = () => {
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isInvestDialogOpen, setIsInvestDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<LoanRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<{ avatar_url: string | null; full_name: string | null }>({ avatar_url: null, full_name: null });
 
-  // Create loan form state
+  // Create/Edit loan form state
   const [newLoan, setNewLoan] = useState({
+    title: "",
+    description: "",
+    amount_requested: "",
+    interest_rate: "",
+    repayment_months: "",
+  });
+
+  const [editLoan, setEditLoan] = useState({
     title: "",
     description: "",
     amount_requested: "",
@@ -265,6 +276,126 @@ const Dashboard = () => {
   const openInvestDialog = (loan: LoanRequest) => {
     setSelectedLoan(loan);
     setIsInvestDialogOpen(true);
+  };
+
+  const openEditDialog = (loan: LoanRequest) => {
+    setSelectedLoan(loan);
+    setEditLoan({
+      title: loan.title,
+      description: loan.description,
+      amount_requested: loan.amount_requested.toString(),
+      interest_rate: loan.interest_rate.toString(),
+      repayment_months: loan.repayment_months.toString(),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (loan: LoanRequest) => {
+    setSelectedLoan(loan);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleEditLoan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedLoan) return;
+
+    setIsSubmitting(true);
+    try {
+      // Check if there are any investments
+      const { data: investments, error: investError } = await supabase
+        .from("investments")
+        .select("id")
+        .eq("loan_id", selectedLoan.id)
+        .limit(1);
+
+      if (investError) throw investError;
+
+      if (investments && investments.length > 0) {
+        toast.error("Cannot edit loan request with existing investments");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const amount = parseFloat(editLoan.amount_requested);
+      const interestRate = parseFloat(editLoan.interest_rate);
+      
+      const MIN_BORROW = 100;
+      const MIN_INTEREST = 4;
+      
+      if (amount < MIN_BORROW) {
+        toast.error(`Minimum loan amount is $${MIN_BORROW}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (interestRate < MIN_INTEREST) {
+        toast.error(`Minimum interest rate is ${MIN_INTEREST}%`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("loan_requests")
+        .update({
+          title: editLoan.title,
+          description: editLoan.description,
+          amount_requested: amount,
+          interest_rate: interestRate,
+          repayment_months: parseInt(editLoan.repayment_months),
+        })
+        .eq("id", selectedLoan.id)
+        .eq("borrower_id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Loan request updated successfully!");
+      setIsEditDialogOpen(false);
+      setSelectedLoan(null);
+      fetchLoanRequests();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update loan request");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteLoan = async () => {
+    if (!user || !selectedLoan) return;
+
+    setIsSubmitting(true);
+    try {
+      // Check if there are any investments
+      const { data: investments, error: investError } = await supabase
+        .from("investments")
+        .select("id")
+        .eq("loan_id", selectedLoan.id)
+        .limit(1);
+
+      if (investError) throw investError;
+
+      if (investments && investments.length > 0) {
+        toast.error("Cannot delete loan request with existing investments");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("loan_requests")
+        .delete()
+        .eq("id", selectedLoan.id)
+        .eq("borrower_id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Loan request deleted successfully!");
+      setIsDeleteDialogOpen(false);
+      setSelectedLoan(null);
+      fetchLoanRequests();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete loan request");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Filter and sort logic
@@ -768,7 +899,27 @@ const Dashboard = () => {
                       </p>
                     </div>
 
-                    {/* Action Button */}
+                    {/* Action Buttons */}
+                    {isOwnLoan && loan.status === "open" && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => openEditDialog(loan)}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={() => openDeleteDialog(loan)}
+                          variant="outline"
+                          className="flex-1 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                     {!isOwnLoan && loan.status === "open" && remainingAmount > 0 && (
                       <Button
                         onClick={() => openInvestDialog(loan)}
@@ -786,6 +937,136 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Loan Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Loan Request</DialogTitle>
+            <DialogDescription>
+              Update the details for your loan request
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditLoan} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title</Label>
+              <Input
+                id="edit-title"
+                placeholder="e.g., Business expansion loan"
+                value={editLoan.title}
+                onChange={(e) => setEditLoan({ ...editLoan, title: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Describe your loan purpose..."
+                value={editLoan.description}
+                onChange={(e) => setEditLoan({ ...editLoan, description: e.target.value })}
+                required
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-amount">Amount ($)</Label>
+                <Input
+                  id="edit-amount"
+                  type="number"
+                  step="0.01"
+                  min="100"
+                  placeholder="10000"
+                  value={editLoan.amount_requested}
+                  onChange={(e) => setEditLoan({ ...editLoan, amount_requested: e.target.value })}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Minimum: $100</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-interest">Interest Rate (% APR)</Label>
+                <Input
+                  id="edit-interest"
+                  type="number"
+                  step="0.1"
+                  min="4"
+                  placeholder="5.5"
+                  value={editLoan.interest_rate}
+                  onChange={(e) => setEditLoan({ ...editLoan, interest_rate: e.target.value })}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Minimum: 4% annual</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-months">Repayment Period (months)</Label>
+              <Input
+                id="edit-months"
+                type="number"
+                placeholder="12"
+                value={editLoan.repayment_months}
+                onChange={(e) => setEditLoan({ ...editLoan, repayment_months: e.target.value })}
+                required
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditDialogOpen(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="hero" className="flex-1" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Request"
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Loan Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedLoan?.title}"? This action cannot be undone.
+              {selectedLoan && selectedLoan.amount_funded > 0 && (
+                <span className="block mt-2 text-destructive font-medium">
+                  Note: This loan has received investments and cannot be deleted.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteLoan}
+              disabled={isSubmitting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Investment Dialog */}
       <Dialog open={isInvestDialogOpen} onOpenChange={setIsInvestDialogOpen}>
