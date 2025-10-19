@@ -29,14 +29,10 @@ const UserProfile = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      navigate("/", { replace: true });
-      return;
-    }
     if (userId) {
       fetchUserProfile();
     }
-  }, [user, userId, navigate]);
+  }, [userId]);
 
   const fetchUserProfile = async () => {
     if (!userId) return;

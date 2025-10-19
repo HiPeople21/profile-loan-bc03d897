@@ -99,20 +99,22 @@ const Settings = () => {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
+      // Get public URL with cache-busting timestamp
       const { data } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
 
+      const avatarUrlWithTimestamp = `${data.publicUrl}?t=${Date.now()}`;
+
       // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: data.publicUrl })
+        .update({ avatar_url: avatarUrlWithTimestamp })
         .eq("id", user.id);
 
       if (updateError) throw updateError;
 
-      setProfile({ ...profile, avatar_url: data.publicUrl });
+      setProfile({ ...profile, avatar_url: avatarUrlWithTimestamp });
       toast.success("Profile picture updated!");
     } catch (error: any) {
       toast.error(error.message || "Failed to upload image");

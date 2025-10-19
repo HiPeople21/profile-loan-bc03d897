@@ -87,14 +87,10 @@ const Dashboard = () => {
   const [filterTerm, setFilterTerm] = useState<"all" | "0-12" | "12-24" | "24+">("all");
 
   useEffect(() => {
-    if (!user) {
-      navigate("/", { replace: true });
-      return;
-    }
     fetchLoanRequests();
     fetchUserProfile();
     fetchUserStats();
-  }, [user, navigate]);
+  }, [user]);
 
   const fetchUserProfile = async () => {
     if (!user) return;

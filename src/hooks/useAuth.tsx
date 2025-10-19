@@ -8,23 +8,37 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      }
-    );
+    let mounted = true;
 
-    // Then check for existing session
+    // Check for existing session FIRST
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
-      setIsLoading(false);
+
+      // Then set up auth state listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          if (!mounted) return;
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      );
+
+      // Add minimum delay to prevent flash
+      setTimeout(() => {
+        if (mounted) setIsLoading(false);
+      }, 300);
+
+      // Cleanup subscription when component unmounts
+      return () => {
+        subscription.unsubscribe();
+      };
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { user, session, isLoading };
