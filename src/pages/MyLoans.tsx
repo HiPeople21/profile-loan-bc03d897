@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, DollarSign, Percent, Clock, TrendingUp, Users, CheckCircle2 } from "lucide-react";
+import { formatCurrency } from "@/lib/currencyUtils";
 
 interface LoanWithInvestments {
   id: string;
@@ -233,7 +234,7 @@ const MyLoans = () => {
                           Requested
                         </div>
                         <p className="text-xl font-bold">
-                          ${loan.amount_requested.toLocaleString()}
+                          {formatCurrency(loan.amount_requested, loan.currency)}
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -242,7 +243,7 @@ const MyLoans = () => {
                           Funded
                         </div>
                         <p className="text-xl font-bold text-primary">
-                          ${loan.amount_funded.toLocaleString()}
+                          {formatCurrency(loan.amount_funded, loan.currency)}
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -274,7 +275,7 @@ const MyLoans = () => {
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        ${remainingAmount.toLocaleString()} remaining
+                        {formatCurrency(remainingAmount, loan.currency)} remaining
                       </p>
                     </div>
 
@@ -300,7 +301,7 @@ const MyLoans = () => {
                                 </p>
                               </div>
                               <p className="font-bold text-primary">
-                                ${investment.amount.toLocaleString()}
+                                {formatCurrency(investment.amount, loan.currency)}
                               </p>
                             </div>
                           ))}
@@ -356,12 +357,12 @@ const MyLoans = () => {
               <div className="space-y-2 p-4 bg-muted rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Principal Amount:</span>
-                  <span className="font-semibold">${selectedLoan.amount_funded.toLocaleString()}</span>
+                  <span className="font-semibold">{formatCurrency(selectedLoan.amount_funded, selectedLoan.currency)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Interest ({selectedLoan.interest_rate}% APR):</span>
                   <span className="font-semibold">
-                    ${((selectedLoan.amount_funded * selectedLoan.interest_rate / 100 / 12) * selectedLoan.repayment_months).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency((selectedLoan.amount_funded * selectedLoan.interest_rate / 100 / 12) * selectedLoan.repayment_months, selectedLoan.currency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -371,7 +372,7 @@ const MyLoans = () => {
                 <div className="pt-2 border-t flex justify-between">
                   <span className="font-bold">Total Repayment:</span>
                   <span className="font-bold text-lg text-primary">
-                    ${calculateRepaymentAmount(selectedLoan).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(calculateRepaymentAmount(selectedLoan), selectedLoan.currency)}
                   </span>
                 </div>
               </div>

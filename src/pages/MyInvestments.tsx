@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, DollarSign, Percent, Clock, TrendingDown, User } from "lucide-react";
+import { formatCurrency } from "@/lib/currencyUtils";
 
 interface Investment {
   id: string;
@@ -21,6 +22,7 @@ interface Investment {
     interest_rate: number;
     repayment_months: number;
     status: string;
+    currency: string;
     borrower: {
       full_name: string | null;
     } | null;
@@ -172,13 +174,13 @@ const MyInvestments = () => {
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Your Investment</p>
                           <p className="text-3xl font-bold text-primary">
-                            ${investment.amount.toLocaleString()}
+                            {formatCurrency(investment.amount, loan.currency)}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground mb-1">Expected Return</p>
                           <p className="text-2xl font-bold text-accent">
-                            ${(investment.amount * (1 + (loan.interest_rate / 100) * (loan.repayment_months / 12))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatCurrency(investment.amount * (1 + (loan.interest_rate / 100) * (loan.repayment_months / 12)), loan.currency)}
                           </p>
                         </div>
                       </div>
@@ -201,7 +203,7 @@ const MyInvestments = () => {
                           Total Loan
                         </div>
                         <p className="font-medium">
-                          ${loan.amount_requested.toLocaleString()}
+                          {formatCurrency(loan.amount_requested, loan.currency)}
                         </p>
                       </div>
                       <div className="space-y-1">

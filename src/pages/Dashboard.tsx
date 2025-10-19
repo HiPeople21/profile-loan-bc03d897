@@ -16,6 +16,7 @@ import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, L
 import { Badge } from "@/components/ui/badge";
 import { calculateMinInvestment, formatMinInvestment } from "@/lib/investmentUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SUPPORTED_CURRENCIES, getCurrencySymbol, formatCurrency, getConversionRateText } from "@/lib/currencyUtils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
@@ -69,6 +70,7 @@ const Dashboard = () => {
     amount_requested: "",
     interest_rate: "",
     repayment_months: "",
+    currency: "USD",
   });
 
   const [editLoan, setEditLoan] = useState({
@@ -77,7 +79,11 @@ const Dashboard = () => {
     amount_requested: "",
     interest_rate: "",
     repayment_months: "",
+    currency: "USD",
   });
+
+  // Store conversion rates for display
+  const [conversionRates, setConversionRates] = useState<{ [key: string]: string }>({});
 
   // Investment form state
   const [investmentAmount, setInvestmentAmount] = useState("");
@@ -94,6 +100,24 @@ const Dashboard = () => {
     fetchUserProfile();
     fetchUserStats();
   }, [user]);
+
+  // Fetch conversion rates when loans are loaded
+  useEffect(() => {
+    const loadConversionRates = async () => {
+      const rates: { [key: string]: string } = {};
+      for (const loan of loanRequests) {
+        if (loan.currency !== 'USD') {
+          const rateText = await getConversionRateText(loan.currency, 'USD', loan.amount_requested);
+          rates[loan.id] = rateText;
+        }
+      }
+      setConversionRates(rates);
+    };
+
+    if (loanRequests.length > 0) {
+      loadConversionRates();
+    }
+  }, [loanRequests]);
 
   const fetchUserProfile = async () => {
     if (!user) return;
@@ -275,7 +299,7 @@ const Dashboard = () => {
         amount_requested: amount,
         interest_rate: interestRate,
         repayment_months: parseInt(newLoan.repayment_months),
-        currency: "USD",
+        currency: newLoan.currency,
         status: "open",
       });
 
@@ -289,6 +313,7 @@ const Dashboard = () => {
         amount_requested: "",
         interest_rate: "",
         repayment_months: "",
+        currency: "USD",
       });
       fetchLoanRequests();
     } catch (error: any) {
@@ -329,6 +354,7 @@ const Dashboard = () => {
           amount: amount,
           isAnonymous: isAnonymous,
           loanTitle: selectedLoan.title,
+          currency: selectedLoan.currency,
         }
       });
       
@@ -360,6 +386,7 @@ const Dashboard = () => {
       amount_requested: loan.amount_requested.toString(),
       interest_rate: loan.interest_rate.toString(),
       repayment_months: loan.repayment_months.toString(),
+      currency: loan.currency,
     });
     setIsEditDialogOpen(true);
   };
@@ -408,6 +435,7 @@ const Dashboard = () => {
           amount_requested: amount,
           interest_rate: interestRate,
           repayment_months: parseInt(editLoan.repayment_months),
+          currency: editLoan.currency,
         })
         .eq("id", selectedLoan.id)
         .eq("borrower_id", user.id);
@@ -602,7 +630,7 @@ const Dashboard = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="amount">Amount ($)</Label>
+                      <Label htmlFor="amount">Amount</Label>
                       <Input
                         id="amount"
                         type="number"
@@ -613,8 +641,28 @@ const Dashboard = () => {
                         onChange={(e) => setNewLoan({ ...newLoan, amount_requested: e.target.value })}
                         required
                       />
-                      <p className="text-xs text-muted-foreground">Minimum: $100</p>
+                      <p className="text-xs text-muted-foreground">Minimum: {getCurrencySymbol(newLoan.currency)}100</p>
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">Currency</Label>
+                      <Select
+                        value={newLoan.currency}
+                        onValueChange={(value) => setNewLoan({ ...newLoan, currency: value })}
+                      >
+                        <SelectTrigger id="currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPORTED_CURRENCIES.map((curr) => (
+                            <SelectItem key={curr.code} value={curr.code}>
+                              {curr.symbol} {curr.code} - {curr.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="interest">Interest Rate (% APR)</Label>
                       <Input
@@ -629,17 +677,17 @@ const Dashboard = () => {
                       />
                       <p className="text-xs text-muted-foreground">Minimum: 4% annual</p>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="months">Repayment Period (months)</Label>
-                    <Input
-                      id="months"
-                      type="number"
-                      placeholder="12"
-                      value={newLoan.repayment_months}
-                      onChange={(e) => setNewLoan({ ...newLoan, repayment_months: e.target.value })}
-                      required
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="months">Repayment Period (months)</Label>
+                      <Input
+                        id="months"
+                        type="number"
+                        placeholder="12"
+                        value={newLoan.repayment_months}
+                        onChange={(e) => setNewLoan({ ...newLoan, repayment_months: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -1002,9 +1050,16 @@ const Dashboard = () => {
                           <DollarSign className="h-4 w-4" />
                           Amount
                         </div>
-                        <span className="font-semibold">
-                          ${loan.amount_requested.toLocaleString()}
-                        </span>
+                        <div className="text-right">
+                          <span className="font-semibold">
+                            {formatCurrency(loan.amount_requested, loan.currency)}
+                          </span>
+                          {loan.currency !== 'USD' && conversionRates[loan.id] && (
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {conversionRates[loan.id]}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground">
@@ -1125,7 +1180,7 @@ const Dashboard = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-amount">Amount ($)</Label>
+                <Label htmlFor="edit-amount">Amount</Label>
                 <Input
                   id="edit-amount"
                   type="number"
@@ -1136,8 +1191,28 @@ const Dashboard = () => {
                   onChange={(e) => setEditLoan({ ...editLoan, amount_requested: e.target.value })}
                   required
                 />
-                <p className="text-xs text-muted-foreground">Minimum: $100</p>
+                <p className="text-xs text-muted-foreground">Minimum: {getCurrencySymbol(editLoan.currency)}100</p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-currency">Currency</Label>
+                <Select
+                  value={editLoan.currency}
+                  onValueChange={(value) => setEditLoan({ ...editLoan, currency: value })}
+                >
+                  <SelectTrigger id="edit-currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_CURRENCIES.map((curr) => (
+                      <SelectItem key={curr.code} value={curr.code}>
+                        {curr.symbol} {curr.code} - {curr.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-interest">Interest Rate (% APR)</Label>
                 <Input
@@ -1152,17 +1227,17 @@ const Dashboard = () => {
                 />
                 <p className="text-xs text-muted-foreground">Minimum: 4% annual</p>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-months">Repayment Period (months)</Label>
-              <Input
-                id="edit-months"
-                type="number"
-                placeholder="12"
-                value={editLoan.repayment_months}
-                onChange={(e) => setEditLoan({ ...editLoan, repayment_months: e.target.value })}
-                required
-              />
+              <div className="space-y-2">
+                <Label htmlFor="edit-months">Repayment Period (months)</Label>
+                <Input
+                  id="edit-months"
+                  type="number"
+                  placeholder="12"
+                  value={editLoan.repayment_months}
+                  onChange={(e) => setEditLoan({ ...editLoan, repayment_months: e.target.value })}
+                  required
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <Button

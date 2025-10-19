@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CreditCard, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { getCurrencySymbol, formatCurrency } from "@/lib/currencyUtils";
 import { toast } from "sonner";
 
 interface PaymentState {
@@ -13,6 +14,7 @@ interface PaymentState {
   amount: number;
   isAnonymous: boolean;
   loanTitle: string;
+  currency: string;
 }
 
 const Payment = () => {
@@ -162,7 +164,7 @@ const Payment = () => {
               Complete Your Investment
             </CardTitle>
             <CardDescription>
-              You are investing ${paymentData.amount.toLocaleString()} in "{paymentData.loanTitle}"
+              You are investing {formatCurrency(paymentData.amount, paymentData.currency)} in "{paymentData.loanTitle}"
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
