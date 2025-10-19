@@ -236,18 +236,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_public_borrower_info: {
-        Args: { borrower_user_id: string }
-        Returns: {
-          avatar_url: string
-          bio: string
-          credit_score: number
-          full_name: string
-          id: string
-          is_verified: boolean
-          successful_loans_count: number
-        }[]
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
