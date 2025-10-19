@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { TrendingUp, Plus, DollarSign, User, Calendar, Percent, Clock, Target, Loader2, Settings, FileText, TrendingDown, Filter, ArrowUpDown, Edit, Trash2, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +80,7 @@ const Dashboard = () => {
 
   // Investment form state
   const [investmentAmount, setInvestmentAmount] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   // Filter and sort state
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low" | "rate_high" | "rate_low" | "funded_high" | "funded_low">("newest");
@@ -320,6 +322,7 @@ const Dashboard = () => {
         investor_id: user.id,
         loan_id: selectedLoan.id,
         amount: amount,
+        is_anonymous: isAnonymous,
       });
 
       if (error) throw error;
@@ -336,6 +339,7 @@ const Dashboard = () => {
       toast.success("Investment successful!");
       setIsInvestDialogOpen(false);
       setInvestmentAmount("");
+      setIsAnonymous(false);
       setSelectedLoan(null);
       // Refresh from backend as fallback
       fetchLoanRequests();
@@ -674,7 +678,7 @@ const Dashboard = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={userProfile.avatar_url || undefined} />
+                    <AvatarImage src={userProfile.avatar_url ? `${userProfile.avatar_url.split('?')[0]}?t=${Date.now()}` : undefined} />
                     <AvatarFallback>
                       <User className="h-4 w-4" />
                     </AvatarFallback>
@@ -1231,6 +1235,21 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is-anonymous"
+                checked={isAnonymous}
+                onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
+              />
+              <Label
+                htmlFor="is-anonymous"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Invest anonymously (your name will not be shown to the borrower)
+              </Label>
+            </div>
+            
             <div className="flex gap-2">
               <Button
                 type="button"

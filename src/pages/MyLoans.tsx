@@ -23,6 +23,7 @@ interface LoanWithInvestments {
     id: string;
     amount: number;
     created_at: string;
+    is_anonymous: boolean;
     investor: {
       full_name: string | null;
     } | null;
@@ -57,7 +58,7 @@ const MyLoans = () => {
         (loansData || []).map(async (loan) => {
           const { data: investmentsData } = await supabase
             .from("investments")
-            .select("id, amount, created_at, investor_id")
+            .select("id, amount, created_at, investor_id, is_anonymous")
             .eq("loan_id", loan.id)
             .order("created_at", { ascending: false });
 
@@ -216,7 +217,7 @@ const MyLoans = () => {
                             >
                               <div>
                                 <p className="font-medium">
-                                  {investment.investor?.full_name || "Anonymous"}
+                                  {investment.is_anonymous ? "Anonymous Investor" : (investment.investor?.full_name || "User")}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {new Date(investment.created_at).toLocaleDateString()}

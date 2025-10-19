@@ -68,6 +68,7 @@ export type Database = {
           created_at: string
           id: string
           investor_id: string
+          is_anonymous: boolean
           loan_id: string
         }
         Insert: {
@@ -75,6 +76,7 @@ export type Database = {
           created_at?: string
           id?: string
           investor_id: string
+          is_anonymous?: boolean
           loan_id: string
         }
         Update: {
@@ -82,6 +84,7 @@ export type Database = {
           created_at?: string
           id?: string
           investor_id?: string
+          is_anonymous?: boolean
           loan_id?: string
         }
         Relationships: [
